@@ -1,0 +1,12 @@
+{
+	"name": "Kijiji-Ad-Extraction",
+	"actId": "iECnWFL3vo6KxKcqB",
+	"version": {
+		"versionNumber": "0.2",
+		"buildTag": "latest",
+		"envVars": [],
+		"sourceType": "TARBALL",
+		"tarballUrl": "https://api.apify.com/v2/key-value-stores/4PAP6kEvWmkD9KYmL/records/Kijiji-Ad-Extraction-0.2.zip?disableRedirect=true"
+	},
+	"template": "hello_word"
+}
