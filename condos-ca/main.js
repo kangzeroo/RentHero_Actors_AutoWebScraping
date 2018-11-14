@@ -1,8 +1,6 @@
 const Apify = require('apify')
-const cssesc = require('cssesc')
 const axios = require('axios')
 // const $ = require('jquery')
-const jsesc = require('jsesc')
 
 const stage = 'development'
 const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).KIJIJI_PARSE_ENDPOINT
@@ -22,8 +20,8 @@ Apify.main(async () => {
   */
 
   // Viewport && Window size
-  const width = 1920
-  const height = 1080
+  const width = 375
+  const height = 667
 
   // const browser = await puppeteer.launch({
   //     headless: false,
@@ -77,8 +75,8 @@ Apify.main(async () => {
   // console.log(data)
   // dev
   const data = [
-    { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },
-    { ad_url: 'https://www.zolo.ca/toronto-real-estate/121-alfred-avenue' }
+    { ad_url: 'https://condos.ca/toronto/st-lawrence-on-the-park-65-scadding-ave/unit-708-C4301810' },
+    { ad_url: 'https://condos.ca/toronto/the-ninety-90-broadview-ave/unit-401-E4275451' }
   ]
 
   // create a list of requests
@@ -116,28 +114,42 @@ Apify.main(async () => {
 
         const extractImages = async ($) => {
           let imgs = []
-          await $("img.listing-slider-content-photo-main").each((i, img) => {
-             imgs.push(img.dataset.imgDeferSrc)
+          await $("div.swiper-wrapper div:not(.swiper-slide-duplicate) img").each((i, img) => {
+             imgs.push(img.src)
           })
           return imgs
         }
 
         const extractPageContents = async ($, url) => {
-          await $('button.expandable-toggle').click()
-          // const ad_id = await page.$("li[class*='currentCrumb-']")
-          const date_posted = await $("dt.column-label:contains('Added to Zolo') + dd.column-value").text()
-          const poster_name = await $("dt.column-label:contains('Listed By') + dd.column-value").text()
-          const title = await $("h1.address").text()
-          const address_1 = await $("h1.address").text()
-          const address_2 = await $("section.listing-location > div > a:first-of-type").text()
-          const price = await $("section.listing-price > div:first-of-type > span.priv").text().replace('\n', '')
-          const description = await $("div.section-listing-content > div.section-listing-content-pad > span.priv > p:nth-of-type(2)").text()
+          await $("div.top-post-details a.toggle-lnk").click()
+          await $("div#accordiona a[href='#desc-mobi']").click()
+          // const ad_id = await page.$("li[class*='currentCrumb-']"
+
+          const address = $("h2.slide-address")
+              .clone()    //clone the element
+              .children() //select all the children
+              .remove()   //remove all the children
+              .end()  //again go back to selected element
+              .text()
+              .replace(',', '')
+              .replace('in', '')
+              .trim()
+
+          let x = $("h2.slide-address").text().split(',')
+          const city = $("h2.slide-address").text().split(',')[x.length - 1].trim()
+          const full_address = address + ', ' + city
+
+          const date_posted = await $("div.post-details-list p:contains('Date Listed') + div.info-value").text()
+          const poster_name = await $("div#desc div.left").text()
+          const title = await $("h1.slide-title").text().trim()
+          const price = await $("div.top-post-details ul.post-list-1 > li:first-of-type").text().trim()
+          const movein = await $("div.post-details-list p:contains('Date Available') + div.info-value").text()
+          const description = await $("div#desc").text().trim()
           const image_urls = await extractImages($)
-          const mls_num = await $("dt.column-label:contains('MLS®#') + dd.column-value").text()
-          const unit_style_1 = $("dt.column-label:contains('Type') + dd.column-value").text()
-          const unit_style_2 = $("dt.column-label:contains('Style') + dd.column-value").text()
-          const beds = $("section.listing-location > ul.list-unstyled > li:nth-of-type(1)").text()
-          const baths = $("section.listing-location > ul.list-unstyled > li:nth-of-type(2)").text()
+          const mls_num = await $("div#desc div.right").text().trim()
+          const beds = await $("div.top-post-details ul.post-list-1 li:contains('Beds')").text().trim()
+          const baths = await $("div.top-post-details ul.post-list-1 li:contains('Bath')").text().trim()
+          const parking = await $("div.top-post-details ul.post-list-1 li:contains('Parking')").text().trim()
 
           const extraction = {
             // ad_id: await getProp(ad_id, 'textContent'),
@@ -145,14 +157,15 @@ Apify.main(async () => {
             date_posted: date_posted,
             poster_name: poster_name,
             title: title,
-            address: address_1 + " " + address_2,
+            movein: movein,
+            address: full_address,
             price: price,
             description: description,
             images: image_urls,
             mls_num: mls_num,
-            unit_style: unit_style_1 + " " + unit_style_2,
             beds: beds,
             baths: baths,
+            parking: parking,
           }
           console.log(extraction)
           return extraction
@@ -173,6 +186,7 @@ Apify.main(async () => {
     gotoFunction: async ({ request, page }) => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
+      await page.viewport({ width, height })
       // await page.setCookie(...cookies)
       // console.log('Successfully set cookies..')
       // await page.deleteCookie(...cookies);

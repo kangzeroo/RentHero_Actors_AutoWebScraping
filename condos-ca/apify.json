@@ -1,0 +1,12 @@
+{
+	"name": "condos-ca",
+	"actId": "JNXJnRzBHwPSmLo8G",
+	"version": {
+		"versionNumber": "0.1",
+		"buildTag": "latest",
+		"envVars": [],
+		"sourceType": "TARBALL",
+		"tarballUrl": "https://api.apify.com/v2/key-value-stores/4PAP6kEvWmkD9KYmL/records/condos-ca-0.1.zip?disableRedirect=true"
+	},
+	"template": "hello_word"
+}

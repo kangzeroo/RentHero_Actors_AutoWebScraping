@@ -26,7 +26,7 @@ Apify.main(async () => {
     // apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
     // liveView: false,
     // useChrome: false,
-  });
+  // });
   // const page = await browser.newPage();
   // await page.goto('https://www.kijiji.ca/t-login.html');
   // Login
@@ -65,7 +65,7 @@ Apify.main(async () => {
   const requestList = new Apify.RequestList({
     sources: dtt,
     persistStateKey: 'kijiji-ad-scraping-state'
-  })
+  });
   // This call loads and parses the URLs from the remote file.
   await requestList.initialize()
 
@@ -77,7 +77,7 @@ Apify.main(async () => {
       // console.log(await page.cookies())
       const title = await page.title()
       console.log(`Title of ${request.url}: ${title}`)
-      const extracted_details = await extractPageContents(page)
+      const extracted_details = await extractPageContents(page, request.url)
       return sendToAPIGateway(extracted_details, KIJIJI_PARSE_ENDPOINT)
     },
     handleFailedRequestFunction: async ({ request }) => {
@@ -92,7 +92,7 @@ Apify.main(async () => {
       console.log(request.url)
       // await page.setCookie(...cookies)
       // console.log('Successfully set cookies..')
-      await page.deleteCookie(...cookies);
+      // await page.deleteCookie(...cookies);
       console.log('Successfully removed cookies..')
       return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
     },
@@ -109,7 +109,7 @@ Apify.main(async () => {
   await crawler.run()
 })
 
-const extractPageContents = async (page) => {
+const extractPageContents = async (page, url) => {
   const ad_id = await page.$("li[class*='currentCrumb-']")
   const date_posted = await page.$("time")
   await new Promise((res, rej) => setTimeout(res, 1000))
@@ -123,6 +123,7 @@ const extractPageContents = async (page) => {
   const image_urls = await extractImages(page)
 
   const extraction = {
+    ad_url: url,
     ad_id: await getProp(ad_id, 'textContent'),
     date_posted: await getProp(date_posted, 'title'),
     poster_name: await getProp(poster_name, 'textContent'),
