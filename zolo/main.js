@@ -70,16 +70,16 @@ Apify.main(async () => {
 
   // then we crawl over the array
   // prod
-  const response = await Apify.client.crawlers.getExecutionResults({
-      executionId: input._id
-  })
-  const data = response.items[0].pageFunctionResult
-  console.log(data)
+  // const response = await Apify.client.crawlers.getExecutionResults({
+  //     executionId: input._id
+  // })
+  // const data = response.items[0].pageFunctionResult
+  // console.log(data)
   // dev
-  // const data = [
-  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },
-  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/121-alfred-avenue' }
-  // ]
+  const data = [
+    { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },
+    { ad_url: 'https://www.zolo.ca/toronto-real-estate/121-alfred-avenue' }
+  ]
 
   // create a list of requests
   const dtt = data.map((d) => {
@@ -113,6 +113,15 @@ Apify.main(async () => {
       });
 
       const extracted_details = await page.evaluate(async () => {
+
+        const extractImages = async ($) => {
+          let imgs = []
+          await $("img.listing-slider-content-photo-main").each((i, img) => {
+             imgs.push(img.dataset.imgDeferSrc)
+          })
+          return imgs
+        }
+
         const extractPageContents = async ($) => {
           await $('button.expandable-toggle').click()
           // const ad_id = await page.$("li[class*='currentCrumb-']")
@@ -123,7 +132,7 @@ Apify.main(async () => {
           const address_2 = await $("section.listing-location > div > a:first-of-type").text()
           const price = await $("section.listing-price > div:first-of-type > span.priv").text().replace('\n', '')
           const description = await $("div.section-listing-content > div.section-listing-content-pad > span.priv > p:nth-of-type(2)").text()
-          // const image_urls = await extractImages(page)
+          const image_urls = await extractImages($)
           const mls_num = await $("dt.column-label:contains('MLS®#') + dd.column-value").text()
           const unit_style_1 = $("dt.column-label:contains('Type') + dd.column-value").text()
           const unit_style_2 = $("dt.column-label:contains('Style') + dd.column-value").text()
@@ -138,7 +147,7 @@ Apify.main(async () => {
             address: address_1 + " " + address_2,
             price: price,
             description: description,
-            // images: image_urls,
+            images: image_urls,
             mls_num: mls_num,
             unit_style: unit_style_1 + " " + unit_style_2,
             beds: beds,
@@ -183,43 +192,6 @@ Apify.main(async () => {
 })
 
 
-
-const extractImages = async (page) => {
-  const openImageDiv = await page.$("div#mainHeroImage")
-  await openImageDiv.click()
-  await new Promise((res, rej) => setTimeout(res, 1000))
-  const thumbnails = await page.$$("button[class*='thumbnail']")
-  console.log('--------- thumbnails ---------')
-  // console.log(thumbnails.length)
-  for (const thumbnail of thumbnails) {
-    const url = await thumbnail.click()
-    await new Promise((res, rej) => setTimeout(res, 500))
-  }
-  console.log('--------- images ---------')
-  const images = await page.$$("img[class*='image']")
-  // console.log(images.length)
-  const image_urls = await Promise.all(images.map(async (img) => {
-    return await getProp(img, 'src')
-  }))
-  console.log('--------- image_urls ---------')
-  // console.log(image_urls)
-  return image_urls
-}
-
-const extractPhone = async (page) => {
-  const phoneBlock = await page.$("button[class*='phoneNumberContainer']")
-  if (phoneBlock) {
-    await phoneBlock.click()
-  }
-  await new Promise((res, rej) => setTimeout(res, 1000))
-  // console.log(phoneBlock)
-  const phone = await page.$("span[class*='phoneShowNumberButton']")
-  if (phone) {
-    return await getProp(phone, 'textContent')
-  } else {
-    return ''
-  }
-}
 
 const sendToAPIGateway = async (data, endpoint) => {
   const p = new Promise((res, rej) => {
