@@ -20,35 +20,40 @@ Apify.main(async () => {
   */
 
   // first we grab the login cookie
-  console.log('Launching Initial Puppeteer...')
-  const browser = await Apify.launchPuppeteer();
-  const page = await browser.newPage();
-  await page.goto('https://www.kijiji.ca/t-login.html');
+  // console.log('Launching Initial Puppeteer...')
+  // const browser = await Apify.launchPuppeteer({
+    // useApifyProxy: true,
+    // apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
+    // liveView: false,
+    // useChrome: false,
+  });
+  // const page = await browser.newPage();
+  // await page.goto('https://www.kijiji.ca/t-login.html');
   // Login
-  console.log('Logging In to Kijiji...')
-  await page.type('#LoginEmailOrNickname', input.username || 'junell.thebest1@gmail.com')
-  await page.type('#login-password', input.password || 'Finding1@3')
-  await page.click('button#SignInButton')
-  await new Promise((res, rej) => setTimeout(res, 3000))
-  // Get cookies
-  const cookies = await page.cookies()
-  console.log(` ------ login cookies grabbed --------`)
+  // console.log('Logging In to Kijiji...')
+  // await page.type('#LoginEmailOrNickname', input.username || 'junell.thebest1@gmail.com')
+  // await page.type('#login-password', input.password || 'Finding1@3')
+  // await page.click('button#SignInButton')
+  // await new Promise((res, rej) => setTimeout(res, 3000))
+  // // Get cookies
+  // const cookies = await page.cookies()
+  // console.log(` ------ login cookies grabbed --------`)
   // console.log(cookies)
 
   // then we crawl over the array
   // prod
-  const response = await Apify.client.crawlers.getExecutionResults({
-      executionId: input._id
-  })
-  const data = response.items[0].pageFunctionResult
-  console.log(data)
+  // const response = await Apify.client.crawlers.getExecutionResults({
+  //     executionId: input._id
+  // })
+  // const data = response.items[0].pageFunctionResult
+  // console.log(data)
   // dev
-  // const data = [
-  //   { ad_url: 'https://kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/stunning-loft-in-king-west-2-bed-2-bath-parking/1396501964?enableSearchNavigationFlag=true' },
-  //   { ad_url: 'https://www.kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/trying-to-rent-a-condo-or-house-have-bad-credit-we-can-help/1368682941?enableSearchNavigationFlag=true' },
-  //   { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/318-richmond-st-806/1397141511?enableSearchNavigationFlag=true' },
-  //   { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/1-bedroom-basement/1397142407?enableSearchNavigationFlag=true' }
-  // ]
+  const data = [
+    { ad_url: 'https://kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/stunning-loft-in-king-west-2-bed-2-bath-parking/1396501964?enableSearchNavigationFlag=true' },
+    { ad_url: 'https://www.kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/trying-to-rent-a-condo-or-house-have-bad-credit-we-can-help/1368682941?enableSearchNavigationFlag=true' },
+    { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/318-richmond-st-806/1397141511?enableSearchNavigationFlag=true' },
+    { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/1-bedroom-basement/1397142407?enableSearchNavigationFlag=true' }
+  ]
 
   // create a list of requests
   const dtt = data.map((d) => {
@@ -92,10 +97,10 @@ Apify.main(async () => {
       return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
     },
     launchPuppeteerOptions: {
-      useApifyProxy: input.useApifyProxy || true,
-      apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
-      liveView: true,
-      useChrome: true,
+      useApifyProxy: true,
+      // apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
+      // liveView: false,
+      // useChrome: false,
     },
     minConcurrency: input.minConcurrency || 1,
     maxConcurrency: input.maxConcurrency || 1,
