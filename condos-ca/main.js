@@ -2,8 +2,8 @@ const Apify = require('apify')
 const axios = require('axios')
 // const $ = require('jquery')
 
-const stage = 'development'
-const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).KIJIJI_PARSE_ENDPOINT
+const stage = 'production'
+const CONDOSCA_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).CONDOSCA_PARSE_ENDPOINT
 
 Apify.main(async () => {
   const input = await Apify.getValue('INPUT');
@@ -93,8 +93,15 @@ Apify.main(async () => {
   // This call loads and parses the URLs from the remote file.
   await requestList.initialize()
 
+  const requestQueue = await Apify.openRequestQueue('condosca')
+
+  const new_data = data.map(async (d) => {
+    await requestQueue.addRequest(new Apify.Request({ url: d.ad_url }));
+  })
+  await Promise.all(new_data)
+
   const crawler = new Apify.PuppeteerCrawler({
-    requestList,
+    requestQueue,
     // NOTE: jQuery must be injected in order to use text locators. If jQuery is used, it cannot work alongside page.$()
     // and we must wrap it all inside page.evaluate()
     handlePageFunction: async ({page, request}) => {
@@ -140,6 +147,7 @@ Apify.main(async () => {
           const full_address = address + ', ' + city
 
           const date_posted = await $("div.post-details-list p:contains('Date Listed') + div.info-value").text()
+          const sqft = await $("div.post-details-list p:contains('MLS® Size') + div.info-value").text().replace(/[\t\n\r]/gm,' ').trim()
           const poster_name = await $("div#desc div.left").text()
           const title = await $("h1.slide-title").text().trim()
           const price = await $("div.top-post-details ul.post-list-1 > li:first-of-type").text().trim()
@@ -149,7 +157,10 @@ Apify.main(async () => {
           const mls_num = await $("div#desc div.right").text().trim()
           const beds = await $("div.top-post-details ul.post-list-1 li:contains('Beds')").text().trim()
           const baths = await $("div.top-post-details ul.post-list-1 li:contains('Bath')").text().trim()
-          const parking = await $("div.top-post-details ul.post-list-1 li:contains('Parking')").text().trim()
+
+          await $("li[role='presentation'] > a > span:contains('Amenities')").click()
+          const section_amenities = $("div#amenIcons").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_utils = $("div#maintIcons").text().replace(/[\t\n\r]/gm,' ').trim()
 
           const extraction = {
             // ad_id: await getProp(ad_id, 'textContent'),
@@ -157,6 +168,7 @@ Apify.main(async () => {
             date_posted: date_posted,
             poster_name: poster_name,
             title: title,
+            sqft: sqft,
             movein: movein,
             address: full_address,
             price: price,
@@ -165,7 +177,8 @@ Apify.main(async () => {
             mls_num: mls_num,
             beds: beds,
             baths: baths,
-            parking: parking,
+            section_amenities,
+            section_utils,
           }
           console.log(extraction)
           return extraction
@@ -174,7 +187,9 @@ Apify.main(async () => {
       }, request.url)
       console.log(extracted_details)
       // const extracted_details = await extractPageContents(page, jQuery)
-      return sendToAPIGateway(extracted_details, KIJIJI_PARSE_ENDPOINT)
+      await sendToAPIGateway(extracted_details, CONDOSCA_PARSE_ENDPOINT)
+      await requestQueue.markRequestHandled(request);
+      return 'next'
     },
     handleFailedRequestFunction: async ({ request }) => {
       await Apify.pushData({
@@ -187,9 +202,10 @@ Apify.main(async () => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
       await page.viewport({ width, height })
+      const cookies = await page.cookies()
       // await page.setCookie(...cookies)
       // console.log('Successfully set cookies..')
-      // await page.deleteCookie(...cookies);
+      await page.deleteCookie(...cookies);
       // console.log('Successfully removed cookies..')
       return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
     },
@@ -211,6 +227,36 @@ Apify.main(async () => {
 const sendToAPIGateway = async (data, endpoint) => {
   const p = new Promise((res, rej) => {
     console.log(`Sending data to endpoint: ${endpoint}`)
+    // data = {}
+    /*
+        data = { ad_url: 'https://condos.ca/toronto/the-ninety-90-broadview-ave/unit-401-E4275451',
+  date_posted: '2018-10-12',
+  poster_name: 'Broker: CHESTNUT PARK REAL ESTATE LIMITED, BROKERAGE',
+  title: 'The Ninety,  Unit 401',
+  sqft: '1000-1199 sqft',
+  movein: 'Immediate',
+  address: '90 Broadview Ave, Toronto',
+  price: 'Rental Price $2,875',
+  description: 'Loft Living At The Ninety. 1 Bedroom + Den. Over 1,000 Sqft W/Spacious Combined Living And Dining Area. Exposed Concrete, Stainless Steel Appliances, Ensuite Washer & Dryer And Gas Stove! Engineered Hardwood Floors, Walk-In Closet, Ensuite Bathroom. Steps To The Best Restaurants, Shops, Bars, Galleries, Ttc, Leslieville, Corktown, Distillery District. Heat Pump Rental $39.74.EXTRAS:Fridge, Stove, Dishwasher, Washer, Dryer, All Elfs, Window Coverings. Heat Pump Rental $39.74.\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\tBroker: CHESTNUT PARK REAL ESTATE LIMITED, BROKERAGE\n\t\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t      MLS®# E4275451',
+  images:
+   [ 'https://condos.ca/public/condo_listing/9a/77/56/02/24fd177_3aa4.jpg',
+     'https://condos.ca/public/condo_listing/9f/77/56/02/24fd17c_7a34.jpg',
+     'https://condos.ca/public/condo_listing/a4/77/56/02/24fd181_53df.jpg',
+     'https://condos.ca/public/condo_listing/a9/77/56/02/24fd186_af64.jpg',
+     'https://condos.ca/public/condo_listing/ae/77/56/02/24fd18b_8241.jpg',
+     'https://condos.ca/public/condo_listing/b3/77/56/02/24fd190_0c69.jpg',
+     'https://condos.ca/public/condo_listing/b8/77/56/02/24fd195_3188.jpg',
+     'https://condos.ca/public/condo_listing/bd/77/56/02/24fd19a_71f8.jpg',
+     'https://condos.ca/public/condo_listing/c2/77/56/02/24fd19f_612c.jpg',
+     'https://condos.ca/public/condo_listing/c7/77/56/02/24fd1a4_a08d.jpg',
+     'https://condos.ca/public/condo_listing/cc/77/56/02/24fd1a9_c3f5.jpg',
+     'https://condos.ca/public/condo_listing/d1/77/56/02/24fd1ae_8c8f.jpg' ],
+  mls_num: 'MLS®# E4275451',
+  beds: 'Beds 1',
+  baths: 'Bath 2',
+  section_amenities: 'Common Rooftop Deck Concierge Public Transit Party Room Visitor Parking BBQs Outdoor Patio / Garden Parking Garage Pet Restrictions Games / Recreation Room Security Guard Enter Phone System',
+  section_utils: 'Air Conditioning Common Element Maintenance Heat Building Insurance Water' }
+    */
     axios.post(endpoint, data)
       .then((data) => {
         console.log('Successfully sent info to API Gateway!')

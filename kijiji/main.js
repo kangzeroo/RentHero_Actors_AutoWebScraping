@@ -2,7 +2,7 @@ const Apify = require('apify')
 const axios = require('axios')
 const $ = require('jquery')
 
-const stage = 'development'
+const stage = 'production'
 const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).KIJIJI_PARSE_ENDPOINT
 
 Apify.main(async () => {
@@ -42,18 +42,18 @@ Apify.main(async () => {
 
   // then we crawl over the array
   // prod
-  // const response = await Apify.client.crawlers.getExecutionResults({
-  //     executionId: input._id
-  // })
-  // const data = response.items[0].pageFunctionResult
-  // console.log(data)
+  const response = await Apify.client.crawlers.getExecutionResults({
+      executionId: input._id
+  })
+  const data = response.items[0].pageFunctionResult
+  console.log(data)
   // dev
-  const data = [
-    { ad_url: 'https://kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/stunning-loft-in-king-west-2-bed-2-bath-parking/1396501964?enableSearchNavigationFlag=true' },
-    { ad_url: 'https://www.kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/trying-to-rent-a-condo-or-house-have-bad-credit-we-can-help/1368682941?enableSearchNavigationFlag=true' },
-    { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/318-richmond-st-806/1397141511?enableSearchNavigationFlag=true' },
-    { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/1-bedroom-basement/1397142407?enableSearchNavigationFlag=true' }
-  ]
+  // const data = [
+  //   // { ad_url: 'https://kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/stunning-loft-in-king-west-2-bed-2-bath-parking/1396501964?enableSearchNavigationFlag=true' },
+  //   { ad_url: 'https://www.kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/trying-to-rent-a-condo-or-house-have-bad-credit-we-can-help/1368682941?enableSearchNavigationFlag=true' },
+  //   { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/318-richmond-st-806/1397141511?enableSearchNavigationFlag=true' },
+  //   { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/1-bedroom-basement/1397142407?enableSearchNavigationFlag=true' }
+  // ]
 
   // create a list of requests
   const dtt = data.map((d) => {
@@ -90,9 +90,10 @@ Apify.main(async () => {
     gotoFunction: async ({ request, page }) => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
+      const cookies = await page.cookies()
       // await page.setCookie(...cookies)
       // console.log('Successfully set cookies..')
-      // await page.deleteCookie(...cookies);
+      await page.deleteCookie(...cookies);
       console.log('Successfully removed cookies..')
       return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
     },
@@ -143,7 +144,9 @@ const extractPageContents = async (page, url) => {
 
 const extractImages = async (page) => {
   const openImageDiv = await page.$("div#mainHeroImage")
-  await openImageDiv.click()
+  if (openImageDiv) {
+    await openImageDiv.click()
+  }
   await new Promise((res, rej) => setTimeout(res, 1000))
   const thumbnails = await page.$$("button[class*='thumbnail']")
   console.log('--------- thumbnails ---------')

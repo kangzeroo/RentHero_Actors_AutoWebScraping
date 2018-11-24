@@ -4,8 +4,8 @@ const axios = require('axios')
 // const $ = require('jquery')
 const jsesc = require('jsesc')
 
-const stage = 'development'
-const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).KIJIJI_PARSE_ENDPOINT
+const stage = 'production'
+const ZOLO_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).ZOLO_PARSE_ENDPOINT
 
 Apify.main(async () => {
   const input = await Apify.getValue('INPUT');
@@ -70,16 +70,16 @@ Apify.main(async () => {
 
   // then we crawl over the array
   // prod
-  // const response = await Apify.client.crawlers.getExecutionResults({
-  //     executionId: input._id
-  // })
-  // const data = response.items[0].pageFunctionResult
-  // console.log(data)
+  const response = await Apify.client.crawlers.getExecutionResults({
+      executionId: input._id
+  })
+  const data = response.items[0].pageFunctionResult
+  console.log(data)
   // dev
-  const data = [
-    { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },
-    { ad_url: 'https://www.zolo.ca/toronto-real-estate/121-alfred-avenue' }
-  ]
+  // const data = [
+  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },
+  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/121-alfred-avenue' }
+  // ]
 
   // create a list of requests
   const dtt = data.map((d) => {
@@ -124,6 +124,7 @@ Apify.main(async () => {
 
         const extractPageContents = async ($, url) => {
           await $('button.expandable-toggle').click()
+          await $("label[for='acc-listing-details']").click()
           // const ad_id = await page.$("li[class*='currentCrumb-']")
           const date_posted = await $("dt.column-label:contains('Added to Zolo') + dd.column-value").text()
           const poster_name = await $("dt.column-label:contains('Listed By') + dd.column-value").text()
@@ -138,6 +139,16 @@ Apify.main(async () => {
           const unit_style_2 = $("dt.column-label:contains('Style') + dd.column-value").text()
           const beds = $("section.listing-location > ul.list-unstyled > li:nth-of-type(1)").text()
           const baths = $("section.listing-location > ul.list-unstyled > li:nth-of-type(2)").text()
+          const pets = await $("dt.column-label:contains('Pets') + dd.column-value").text()
+          const section_parking = await $("div.column-container > h4.column-title:contains('Parking') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_property = await $("div.column-container > h4.column-title:contains('Property') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_fees = await $("div.column-container > h4.column-title:contains('Fees') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_inside = await $("div.column-container > h4.column-title:contains('Inside') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_building = await $("div.column-container > h4.column-title:contains('Building') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_rental = await $("div.column-container > h4.column-title:contains('Rental') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_land = await $("div.column-container > h4.column-title:contains('Land') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
+          const section_rooms = await $("section.section-listing input#acc-listing-rooms ~ *").text().replace(/[\t\n\r]/gm,' ').trim()
+
 
           const extraction = {
             // ad_id: await getProp(ad_id, 'textContent'),
@@ -149,10 +160,19 @@ Apify.main(async () => {
             price: price,
             description: description,
             images: image_urls,
-            mls_num: mls_num,
+            mls_num: `MLS# ${mls_num}`,
             unit_style: unit_style_1 + " " + unit_style_2,
             beds: beds,
             baths: baths,
+            pets: pets,
+            section_parking,
+            section_property,
+            section_fees,
+            section_inside,
+            section_building,
+            section_rental,
+            section_land,
+            section_rooms,
           }
           console.log(extraction)
           return extraction
@@ -161,7 +181,7 @@ Apify.main(async () => {
       }, request.url)
       console.log(extracted_details)
       // const extracted_details = await extractPageContents(page, jQuery)
-      return sendToAPIGateway(extracted_details, KIJIJI_PARSE_ENDPOINT)
+      return sendToAPIGateway(extracted_details, ZOLO_PARSE_ENDPOINT)
     },
     handleFailedRequestFunction: async ({ request }) => {
       await Apify.pushData({
@@ -173,9 +193,10 @@ Apify.main(async () => {
     gotoFunction: async ({ request, page }) => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
+      const cookies = await page.cookies()
       // await page.setCookie(...cookies)
       // console.log('Successfully set cookies..')
-      // await page.deleteCookie(...cookies);
+      await page.deleteCookie(...cookies);
       // console.log('Successfully removed cookies..')
       return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
     },
@@ -197,6 +218,47 @@ Apify.main(async () => {
 const sendToAPIGateway = async (data, endpoint) => {
   const p = new Promise((res, rej) => {
     console.log(`Sending data to endpoint: ${endpoint}`)
+    // data = {}
+    /*
+        data = { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911',
+  date_posted: 'Nov 13, 2018',
+  poster_name: 'Royal Lepage Terrequity Elite Realty, Brokerage',
+  title: '911 - 31 Bales Avenue',
+  address: '911 - 31 Bales Avenue Toronto',
+  price: '$2,650 ',
+  description: 'This condo apt home located at 31 Bales Avenue, Toronto is currently for rent and has been available on Zolo.ca for 1 day. It has 2 beds, 2 bathrooms, and is 800-899 square feet. 31 Bales Avenue, Toronto is in the Willowdale East neighborhood Toronto. Lansing Westgate, Newtonbrook East and Willowdale West are nearby neighborhoods. ',
+  images:
+   [ 'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-1.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-1.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-10.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-11.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-12.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-13.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-14.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-15.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-16.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-2.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-3.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-4.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-5.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-6.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-7.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-8.jpg?2018-11-14+10%3A18%3A30',
+     'https://photos.zolo.ca/911-31-bales-avenue-toronto-c4302100-photo-9.jpg?2018-11-14+10%3A18%3A30' ],
+  mls_num: 'C4302100',
+  unit_style: 'Condo Apt Apartment',
+  beds: '2 Bed',
+  baths: '2 Bath',
+  pets: 'Restrict',
+  section_parking: 'Garage Undergrnd  Parking Places 1  Covered Parking Places 1',
+  section_property: 'Type Condo Apt  Style Apartment  Size (sq ft) 800-899  Property Type Residential  Area Toronto  Community Willowdale East  Availability Date 12/15/18',
+  section_fees: 'Building Insurance Included Yes  Common Elements Included Yes  Parking Included Yes',
+  section_inside: 'Bedrooms 2  Bathrooms 2  Kitchens 1  Rooms 5  Patio Terrace Open  Air Conditioning Central Air',
+  section_building: 'Pets Restrict  Stories 9  Heating Forced Air  Private Entrance Yes',
+  section_rental: 'Furnished N',
+  section_land: 'Fronting On Se  Cross Street Yonge/Sheppard  Municipality District Toronto C14',
+  section_rooms: 'Rooms Room details for 911 - 31 Bales Avenue: size, flooring, features etc.       Living Flat   10 x 15 151 sqft  Combined W/Dining, South View, W/O To Balcony   Dining Flat   10 x 8 75 sqft  Combined W/Living   Kitchen Flat   8 x 13 97 sqft  Eat-In Kitchen   Master Flat   15 x 12 183 sqft  W/I Closet   2nd Br Flat   10 x 13 129 sqft' }
+    */
     axios.post(endpoint, data)
       .then((data) => {
         console.log('Successfully sent info to API Gateway!')
