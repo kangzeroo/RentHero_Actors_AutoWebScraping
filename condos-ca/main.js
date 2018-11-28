@@ -111,7 +111,7 @@ Apify.main(async () => {
       const title = await page.title()
       console.log(`Title of ${request.url}: ${title}`)
       // inject jQuery into page
-      const x = await Apify.utils.puppeteer.injectJQuery(page)
+      await Apify.utils.puppeteer.injectJQuery(page)
       page.on('console', msg => {
         for (let i = 0; i < msg.args().length; ++i)
           console.log(`${i}: ${msg.args()[i]}`);
