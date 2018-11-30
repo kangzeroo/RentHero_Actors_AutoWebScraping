@@ -2,8 +2,7 @@ const Apify = require('apify')
 const axios = require('axios')
 // const $ = require('jquery')
 
-const stage = 'production'
-const CONDOSCA_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).CONDOSCA_PARSE_ENDPOINT
+const CONDOSCA_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).CONDOSCA_PARSE_ENDPOINT
 
 Apify.main(async () => {
   const input = await Apify.getValue('INPUT');
@@ -68,16 +67,20 @@ Apify.main(async () => {
 
   // then we crawl over the array
   // prod
-  // const response = await Apify.client.crawlers.getExecutionResults({
-  //     executionId: input._id
-  // })
-  // const data = response.items[0].pageFunctionResult
-  // console.log(data)
+  const response = await Apify.client.crawlers.getExecutionResults({
+      executionId: input._id
+  })
+  const data = response.items[0].pageFunctionResult
+  console.log('------------------')
+  console.log(data)
+  console.log('------------------')
+  console.log(process.env.NODE_ENV)
+  console.log('------------------')
   // dev
-  const data = [
-    { ad_url: 'https://condos.ca/toronto/st-lawrence-on-the-park-65-scadding-ave/unit-708-C4301810' },
-    { ad_url: 'https://condos.ca/toronto/the-ninety-90-broadview-ave/unit-401-E4275451' }
-  ]
+  // const data = [
+  //   { ad_url: 'https://condos.ca/toronto/st-lawrence-on-the-park-65-scadding-ave/unit-708-C4301810' },
+  //   { ad_url: 'https://condos.ca/toronto/the-ninety-90-broadview-ave/unit-401-E4275451' }
+  // ]
 
   // create a list of requests
   const dtt = data.map((d) => {

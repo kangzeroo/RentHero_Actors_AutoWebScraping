@@ -4,8 +4,7 @@ const axios = require('axios')
 // const $ = require('jquery')
 const jsesc = require('jsesc')
 
-const stage = 'production'
-const ZOLO_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).ZOLO_PARSE_ENDPOINT
+const ZOLO_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).ZOLO_PARSE_ENDPOINT
 
 Apify.main(async () => {
   const input = await Apify.getValue('INPUT');
@@ -74,7 +73,11 @@ Apify.main(async () => {
       executionId: input._id
   })
   const data = response.items[0].pageFunctionResult
+  console.log('------------------')
   console.log(data)
+  console.log('------------------')
+  console.log(process.env.NODE_ENV)
+  console.log('------------------')
   // dev
   // const data = [
   //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },

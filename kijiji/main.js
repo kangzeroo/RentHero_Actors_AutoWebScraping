@@ -2,8 +2,7 @@ const Apify = require('apify')
 const axios = require('axios')
 const $ = require('jquery')
 
-const stage = 'production'
-const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${stage}/API_URLS`).KIJIJI_PARSE_ENDPOINT
+const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).KIJIJI_PARSE_ENDPOINT
 
 Apify.main(async () => {
   const input = await Apify.getValue('INPUT');
@@ -45,8 +44,16 @@ Apify.main(async () => {
   const response = await Apify.client.crawlers.getExecutionResults({
       executionId: input._id
   })
+  // console.log('------------------')
+  // console.log(response)
+  // console.log('------------------')
+  // console.log(response.items[0])
   const data = response.items[0].pageFunctionResult
+  console.log('------------------')
   console.log(data)
+  console.log('------------------')
+  console.log(process.env.NODE_ENV)
+  console.log('------------------')
   // dev
   // const data = [
   //   // { ad_url: 'https://kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/stunning-loft-in-king-west-2-bed-2-bath-parking/1396501964?enableSearchNavigationFlag=true' },
