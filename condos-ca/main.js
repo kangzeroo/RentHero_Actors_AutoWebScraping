@@ -191,8 +191,8 @@ Apify.main(async () => {
       console.log(extracted_details)
       // const extracted_details = await extractPageContents(page, jQuery)
       await sendToAPIGateway(extracted_details, CONDOSCA_PARSE_ENDPOINT)
-      await requestQueue.markRequestHandled(request);
-      return 'next'
+      // await requestQueue.markRequestHandled(request);
+      // return 'next'
     },
     handleFailedRequestFunction: async ({ request }) => {
       await Apify.pushData({
