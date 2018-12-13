@@ -1,10 +1,10 @@
 const Apify = require('apify')
-const cssesc = require('cssesc')
 const axios = require('axios')
+const UserAgent = require('user-agents')
+const userAgent = new UserAgent();
 // const $ = require('jquery')
-const jsesc = require('jsesc')
 
-const ZOLO_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).ZOLO_PARSE_ENDPOINT
+// const ZUMPER_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).ZUMPER_PARSE_ENDPOINT
 
 Apify.main(async () => {
   const input = await Apify.getValue('INPUT');
@@ -69,32 +69,36 @@ Apify.main(async () => {
 
   // then we crawl over the array
   // prod
-  const response = await Apify.client.crawlers.getExecutionResults({
-      executionId: input._id
-  })
-  console.log('------------------')
-  console.log(response.items.length)
-  console.log('------------------')
-  // console.log(response.items[0])
-  const data = []
-  response.items.forEach((item) => {
-    if (item.pageFunctionResult) {
-      item.pageFunctionResult.forEach((r) => {
-        data.push(r)
-      })
-    }
-  })
-  console.log('------------------')
-  console.log(data)
-  console.log(`Found ${data.length} entries`)
-  console.log('------------------')
-  console.log(process.env.NODE_ENV)
-  console.log('------------------')
+  // const response = await Apify.client.crawlers.getExecutionResults({
+  //     executionId: input._id
+  // })
+  // console.log('------------------')
+  // console.log(response.items.length)
+  // console.log('------------------')
+  // // console.log(response.items[0])
+  // const data = []
+  // response.items.forEach((item) => {
+  //   if (item.pageFunctionResult) {
+  //     item.pageFunctionResult.forEach((r) => {
+  //       data.push(r)
+  //     })
+  //   }
+  // })
+  // console.log('------------------')
+  // console.log(data)
+  // console.log(`Found ${data.length} entries`)
+  // console.log('------------------')
+  // console.log(process.env.NODE_ENV)
+  // console.log('------------------')
+
   // dev
-  // const data = [
-  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },
-  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/121-alfred-avenue' }
-  // ]
+  const data = [
+    { ad_url: 'https://www.zumper.com/apartment-buildings/p213214/221-265-balliol-street-davisville-village-toronto-on' },
+    // { ad_url: 'https://www.realtor.ca/real-estate/19891858/4-1-bedroom-single-family-house-5138-lakeshore-rd-w-burlington-appleby?' },
+    // { ad_url: 'https://www.apartments.com/517-n-3rd-st-toronto-oh/brvnmkb/' },
+    // { ad_url: 'https://www.zoocasa.com/toronto-on-real-estate/5799107-th117-500-richmond-st-w-toronto-on-m5v1y2-c4321563' },
+    // { ad_url: 'https://www.torontorentals.com/toronto/kings-club-id60237' },
+  ]
 
   // create a list of requests
   const dtt = data.map((d) => {
@@ -105,7 +109,7 @@ Apify.main(async () => {
   console.log(dtt)
   const requestList = new Apify.RequestList({
     sources: dtt,
-    persistStateKey: 'zolo-ad-scraping-state'
+    persistStateKey: 'zumper-ad-scraping-state'
   })
   // This call loads and parses the URLs from the remote file.
   await requestList.initialize()
@@ -129,65 +133,96 @@ Apify.main(async () => {
 
       const extracted_details = await page.evaluate(async (url) => {
 
-        const extractImages = async ($) => {
-          let imgs = []
-          await $("img.listing-slider-content-photo-main").each((i, img) => {
-             imgs.push(img.dataset.imgDeferSrc)
-          })
-          return imgs
-        }
+        // const extractImages = async ($) => {
+        //   let imgs = []
+        //   await $("img.listing-slider-content-photo-main").each((i, img) => {
+        //      imgs.push(img.dataset.imgDeferSrc)
+        //   })
+        //   return imgs
+        // }
 
         const extractPageContents = async ($, url) => {
-          await $('button.expandable-toggle').click()
-          await $("label[for='acc-listing-details']").click()
-          // const ad_id = await page.$("li[class*='currentCrumb-']")
-          const date_posted = await $("dt.column-label:contains('Added to Zolo') + dd.column-value").text()
-          const poster_name = await $("dt.column-label:contains('Listed By') + dd.column-value").text()
-          const title = await $("h1.address").text()
-          const address_1 = await $("h1.address").text()
-          const address_2 = await $("section.listing-location > div > a:first-of-type").text()
-          const price = await $("section.listing-price > div:first-of-type > span.priv").text().replace('\n', '')
-          const description = await $("div.section-listing-content > div.section-listing-content-pad > span.priv > p:nth-of-type(2)").text()
-          const image_urls = await extractImages($)
-          const mls_num = await $("dt.column-label:contains('MLS®#') + dd.column-value").text()
-          const unit_style_1 = $("dt.column-label:contains('Type') + dd.column-value").text()
-          const unit_style_2 = $("dt.column-label:contains('Style') + dd.column-value").text()
-          const beds = $("section.listing-location > ul.list-unstyled > li:nth-of-type(1)").text()
-          const baths = $("section.listing-location > ul.list-unstyled > li:nth-of-type(2)").text()
-          const pets = await $("dt.column-label:contains('Pets') + dd.column-value").text()
-          const section_parking = await $("div.column-container > h4.column-title:contains('Parking') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
-          const section_property = await $("div.column-container > h4.column-title:contains('Property') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
-          const section_fees = await $("div.column-container > h4.column-title:contains('Fees') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
-          const section_inside = await $("div.column-container > h4.column-title:contains('Inside') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
-          const section_building = await $("div.column-container > h4.column-title:contains('Building') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
-          const section_rental = await $("div.column-container > h4.column-title:contains('Rental') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
-          const section_land = await $("div.column-container > h4.column-title:contains('Land') ~ div").text().replace(/[\t\n\r]/gm,' ').trim()
-          const section_rooms = await $("section.section-listing input#acc-listing-rooms ~ *").text().replace(/[\t\n\r]/gm,' ').trim()
 
+          // opens zumper images
+          // https://www.zumper.com/apartment-buildings/p213214/221-265-balliol-street-davisville-village-toronto-on
+          // $('[aria-label]').click()
+          // after click, you can grab all the images as thumbnails
+          // const results = $('span[aria-label*="Go to Slide"] > div > img')
+          // results.each((i) => {
+          // 	console.log(results[i].src) // returns https://d37lj287rvypnj.cloudfront.net/172167044/small
+          // })
+          // to get the full image version, replace https://.../small with https://.../1280x960
+
+          // grabs the zumper description
+          // const aboutTitle = $("h2:contains('About')")[0].className
+          // $(aboutTitle).parent().siblings().text()
+          // note that .siblings() will give you everything, but only 1 of the divs are the description
+
+          // similarly we can use the $(aboutTitle).parent().siblings().text() to get beds & amenities
+          // 
+
+          /*
+            // grabs the ls+json schemas and opens them up
+            var jsonLD = $$('script[type="application/ld+json"]');
+            jsonLD[30].innerText = {
+              "@context": "http://schema.org",
+              "@type": "Apartment",
+              "address": {
+                "@context": "http://schema.org",
+                "@type": "PostalAddress",
+                "addressLocality": "Toronto",
+                "addressRegion": "ON",
+                "name": "Yonge & St. Clair #32158",
+                "postalCode": "M4V 2Z3",
+                "streetAddress": "Yonge & St. Clair #32158"
+              },
+              "name": "Apartments for Rent at Yonge & St. Clair #32158",
+              "geo": {
+                "@type": "GeoCoordinates",
+                "latitude": 43.6797776059281,
+                "longitude": -79.3992441074001
+              },
+              "url": "https://www.zumper.com/apartments-for-rent/34111682/2-bedroom-south-hill-toronto-on",
+              "photo": "https://d37lj287rvypnj.cloudfront.net/259053161/medium",
+              "containedInPlace": {
+                "@context": "http://schema.org",
+                "@type": "City",
+                "address": {
+                  "@context": "http://schema.org",
+                  "@type": "PostalAddress",
+                  "addressLocality": "Toronto",
+                  "addressRegion": "ON"
+                },
+                "name": "Toronto",
+                "url": "https://www.zumper.com/apartments-for-rent/toronto-on"
+              }
+            }
+            $('script[type="application/ld+json"]').each( function(i) {
+              if (i && i.innerText) {
+                const schema = JSON.parse(i.innerText)
+                if (schema && schema['@type'] && schema['@type'] !== 'City') {
+                  console.log("---------- FEED ITEM -----------")
+                  console.log(schema)
+                  var scraped_obj = {
+                      ad_url : schema.url,
+                  }
+                  results.push(scraped_obj);
+                }
+              }
+            });
+          */
+
+          // const address_1 = await $("h1.address").text()
+          // const address_2 = await $("section.listing-location > div > a:first-of-type").text()
+          // const price = await $("section.listing-price > div:first-of-type > span.priv").text().replace('\n', '')
+          // const description = await $("div.section-listing-content > div.section-listing-content-pad > span.priv > p:nth-of-type(2)").text()
+          // const image_urls = await extractImages($)
+          // const section_rooms = await $("section.section-listing input#acc-listing-rooms ~ *").text().replace(/[\t\n\r]/gm,' ').trim()
+          await new Promise((res, rej) => setTimeout(res, 20000))
 
           const extraction = {
             // ad_id: await getProp(ad_id, 'textContent'),
             ad_url: url,
-            date_posted: date_posted,
-            poster_name: poster_name,
-            title: title,
-            address: address_1 + " " + address_2,
-            price: price,
-            description: description,
-            images: image_urls,
-            mls_num: `MLS# ${mls_num}`,
-            unit_style: unit_style_1 + " " + unit_style_2,
-            beds: beds,
-            baths: baths,
-            pets: pets,
-            section_parking,
-            section_property,
-            section_fees,
-            section_inside,
-            section_building,
-            section_rental,
-            section_land,
-            section_rooms,
           }
           console.log(extraction)
           return extraction
@@ -195,8 +230,9 @@ Apify.main(async () => {
         return await extractPageContents(jQuery, url)
       }, request.url)
       console.log(extracted_details)
+      return Promise.resolve(extracted_details)
       // const extracted_details = await extractPageContents(page, jQuery)
-      return sendToAPIGateway(extracted_details, ZOLO_PARSE_ENDPOINT)
+      // return sendToAPIGateway(extracted_details, ZUMPER_PARSE_ENDPOINT)
     },
     handleFailedRequestFunction: async ({ request }) => {
       await Apify.pushData({
@@ -205,18 +241,55 @@ Apify.main(async () => {
           errors: request.errorMessages,
       })
     },
+    // modify the page before loading anything
     gotoFunction: async ({ request, page }) => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
+
+      // hide the window.navigator property
+      await Apify.utils.puppeteer.hideWebDriver(page);
+
+      // Pass the Permissions Test.
+      await page.evaluateOnNewDocument(() => {
+        const originalQuery = window.navigator.permissions.query;
+        return window.navigator.permissions.query = (parameters) => (
+          parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+        );
+      });
+
+      // Pass the Plugins Length Test.
+      await page.evaluateOnNewDocument(() => {
+        // Overwrite the `plugins` property to use a custom getter.
+        Object.defineProperty(navigator, 'plugins', {
+          // This just needs to have `length > 0` for the current test,
+          // but we could mock the plugins too if necessary.
+          get: () => [1, 2, 3, 4, 5],
+        });
+      });
+
+      // Pass the Languages Test.
+      await page.evaluateOnNewDocument(() => {
+        // Overwrite the `plugins` property to use a custom getter.
+        Object.defineProperty(navigator, 'languages', {
+          get: () => ['en-US', 'en'],
+        });
+      });
+
+      // fuck with the cookies
       const cookies = await page.cookies()
       // await page.setCookie(...cookies)
       // console.log('Successfully set cookies..')
       await page.deleteCookie(...cookies);
       // console.log('Successfully removed cookies..')
+
+      // now go to the page
       return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
     },
     launchPuppeteerOptions: {
       useApifyProxy: true,
+      userAgent: userAgent.toString(),
       // apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
       // liveView: false,
       // useChrome: false,

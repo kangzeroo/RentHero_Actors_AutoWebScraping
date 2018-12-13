@@ -70,9 +70,21 @@ Apify.main(async () => {
   const response = await Apify.client.crawlers.getExecutionResults({
       executionId: input._id
   })
-  const data = response.items[0].pageFunctionResult
+  console.log('------------------')
+  console.log(response.items.length)
+  console.log('------------------')
+  // console.log(response.items[0])
+  const data = []
+  response.items.forEach((item) => {
+    if (item.pageFunctionResult) {
+      item.pageFunctionResult.forEach((r) => {
+        data.push(r)
+      })
+    }
+  })
   console.log('------------------')
   console.log(data)
+  console.log(`Found ${data.length} entries`)
   console.log('------------------')
   console.log(process.env.NODE_ENV)
   console.log('------------------')
