@@ -32,68 +32,126 @@ Apify.main(async () => {
   // });
 
 
-  // first we grab the login cookie
-  // console.log('Launching Initial Puppeteer...')
-  // const browser = await Apify.launchPuppeteer({
-  //   useApifyProxy: true,
-  //   apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
-  //   liveView: false,
-  //   useChrome: true,
-  //   args: [
-  //       `--window-size=${ width },${ height }`
-  //   ],
-  // });
-  //
-  // const page = await browser.newPage();
-  //
-  // await page.viewport({ width, height })
-  // await page.goto('https://www.zolo.ca/toronto-real-estate');
-  // // Login
-  // console.log('Logging In to Zolo...')
-  // await page.waitForSelector("button.drawer-menu-toggle")
-  // await page.click('button.drawer-menu-toggle')
-  // await Apify.utils.sleep(1000);
-  // await page.waitForSelector("button.signup-btn")
-  // await page.click('button.signup-btn')
-  // await Apify.utils.sleep(1000);
-  // await page.waitForSelector("input[name='emailaddress']")
-  // await page.waitForSelector("button#submitEmail")
-  // await page.type("input[name='emailaddress']", input.email || 'huang.khan74@gmail.com')
-  // await Apify.utils.sleep(1000);
-  // await page.click('button#submitEmail')
-  // await Apify.utils.sleep(5000);
-  // // // Get cookies
-  // const cookies = await page.cookies()
-  // console.log(` ------ login cookies grabbed --------`)
-  // console.log(cookies)
+  // first we grab the list of recent listings
+  console.log('Launching Initial Puppeteer...')
+  const browser = await Apify.launchPuppeteer({
+    useApifyProxy: true,
+    apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
+    liveView: false,
+    useChrome: true,
+    args: [
+      `--window-size=${ width },${ height }`
+    ],
+  });
 
-  // then we crawl over the array
-  // prod
-  // const response = await Apify.client.crawlers.getExecutionResults({
-  //     executionId: input._id
-  // })
-  // console.log('------------------')
-  // console.log(response.items.length)
-  // console.log('------------------')
-  // // console.log(response.items[0])
-  // const data = []
-  // response.items.forEach((item) => {
-  //   if (item.pageFunctionResult) {
-  //     item.pageFunctionResult.forEach((r) => {
-  //       data.push(r)
-  //     })
-  //   }
-  // })
-  // console.log('------------------')
-  // console.log(data)
-  // console.log(`Found ${data.length} entries`)
-  // console.log('------------------')
-  // console.log(process.env.NODE_ENV)
-  // console.log('------------------')
+  const page = await browser.newPage();
+
+  await Apify.utils.puppeteer.hideWebDriver(page);
+
+  // Pass the Permissions Test.
+  await page.evaluateOnNewDocument(() => {
+    const originalQuery = window.navigator.permissions.query;
+    return window.navigator.permissions.query = (parameters) => (
+      parameters.name === 'notifications' ?
+      Promise.resolve({
+        state: Notification.permission
+      }) :
+      originalQuery(parameters)
+    );
+  });
+
+  // Pass the Plugins Length Test.
+  await page.evaluateOnNewDocument(() => {
+    // Overwrite the `plugins` property to use a custom getter.
+    Object.defineProperty(navigator, 'plugins', {
+      // This just needs to have `length > 0` for the current test,
+      // but we could mock the plugins too if necessary.
+      get: () => [1, 2, 3, 4, 5],
+    });
+  });
+
+  // Pass the Languages Test.
+  await page.evaluateOnNewDocument(() => {
+    // Overwrite the `plugins` property to use a custom getter.
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['en-US', 'en'],
+    });
+  });
+
+  // await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' })
+
+  const listingsPage = 'https://www.zumper.com/apartments-for-rent/toronto-on?sort=newest&property-categories=apartment,condo,house&page=1'
+
+  await page.goto(listingsPage, {
+    waitUntil: 'networkidle2',
+    timeout: 60000
+  })
+
+  await Apify.utils.puppeteer.injectJQuery(page)
+  // using sexy convinient jquery
+  page.on('console', msg => {
+    for (let i = 0; i < msg.args().length; ++i)
+      console.log(`${i}: ${msg.args()[i]}`);
+  });
+  await page.evaluate(async () => {
+    for (let x = 0; x < 5; x++) {
+      setTimeout(async () => {
+        await window.$('button:contains("Load more listings")').click();
+      }, 500 * x)
+    }
+    await new Promise((res, rej) => setTimeout(res, 10000))
+  });
+  await new Promise((res, rej) => setTimeout(res, 12000))
+
+  // using the bulk apify way
+  const ldjsonPromises = await page.$$('script[type="application/ld+json"]')
+  const lsjsons = ldjsonPromises.map(async json => await getProp(json, 'textContent'))
+  const allThem = await Promise.all(lsjsons)
+  console.log(allThem.length)
+  console.log(allThem[3])
+  /*
+      allThem[0] = {
+        "@context":"http://schema.org",
+        "@type":"ApartmentComplex",
+        "address":{
+          "@context":"http://schema.org",
+          "@type":"PostalAddress",
+          "addressLocality":"Toronto",
+          "addressRegion":"ON",
+          "name":"Alter",
+          "postalCode":"M5B 1H3",
+          "streetAddress":"89 McGill St"
+        },
+        "name":"Apartments for Rent at Alter",
+        "geo":{
+          "@type":"GeoCoordinates",
+          "latitude":43.6606054,
+          "longitude":-79.3786354
+        },
+        "url":"https://www.zumper.com/apartment-buildings/p331953/alter-garden-district-toronto-on",
+        "photo":"https://d37lj287rvypnj.cloudfront.net/240045937/medium",
+        "containedInPlace":{
+          "@context":"http://schema.org",
+          "@type":"City",
+          "address":{
+            "@context":"http://schema.org",
+            "@type":"PostalAddress",
+            "addressLocality":"Toronto",
+            "addressRegion":"ON"
+          },
+          "name":"Toronto",
+          "url":"https://www.zumper.com/apartments-for-rent/toronto-on"
+        }
+      }
+  */
+
+  await Apify.utils.sleep(1000);
 
   // dev
-  const data = [
-    { ad_url: 'https://www.zumper.com/apartment-buildings/p213214/221-265-balliol-street-davisville-village-toronto-on' },
+  // const data = allThem.
+  const data = [{
+      ad_url: 'https://www.zumper.com/apartment-buildings/p213214/221-265-balliol-street-davisville-village-toronto-on'
+    },
     // { ad_url: 'https://www.realtor.ca/real-estate/19891858/4-1-bedroom-single-family-house-5138-lakeshore-rd-w-burlington-appleby?' },
     // { ad_url: 'https://www.apartments.com/517-n-3rd-st-toronto-oh/brvnmkb/' },
     // { ad_url: 'https://www.zoocasa.com/toronto-on-real-estate/5799107-th117-500-richmond-st-w-toronto-on-m5v1y2-c4321563' },
@@ -118,7 +176,10 @@ Apify.main(async () => {
     requestList,
     // NOTE: jQuery must be injected in order to use text locators. If jQuery is used, it cannot work alongside page.$()
     // and we must wrap it all inside page.evaluate()
-    handlePageFunction: async ({page, request}) => {
+    handlePageFunction: async ({
+      page,
+      request
+    }) => {
       // await page.reload()
       console.log(` ------ Page Loaded --------`)
       // console.log(await page.cookies())
@@ -132,14 +193,6 @@ Apify.main(async () => {
       });
 
       const extracted_details = await page.evaluate(async (url) => {
-
-        // const extractImages = async ($) => {
-        //   let imgs = []
-        //   await $("img.listing-slider-content-photo-main").each((i, img) => {
-        //      imgs.push(img.dataset.imgDeferSrc)
-        //   })
-        //   return imgs
-        // }
 
         const extractPageContents = async ($, url) => {
 
@@ -159,11 +212,12 @@ Apify.main(async () => {
           // note that .siblings() will give you everything, but only 1 of the divs are the description
 
           // similarly we can use the $(aboutTitle).parent().siblings().text() to get beds & amenities
-          // 
+          // but only 1 of the sibling divs is the amenities container
+          //
 
           /*
             // grabs the ls+json schemas and opens them up
-            var jsonLD = $$('script[type="application/ld+json"]');
+            var jsonLD = $('script[type="application/ld+json"]');
             jsonLD[30].innerText = {
               "@context": "http://schema.org",
               "@type": "Apartment",
@@ -231,18 +285,22 @@ Apify.main(async () => {
       }, request.url)
       console.log(extracted_details)
       return Promise.resolve(extracted_details)
-      // const extracted_details = await extractPageContents(page, jQuery)
       // return sendToAPIGateway(extracted_details, ZUMPER_PARSE_ENDPOINT)
     },
-    handleFailedRequestFunction: async ({ request }) => {
+    handleFailedRequestFunction: async ({
+      request
+    }) => {
       await Apify.pushData({
-          url: request.url,
-          succeeded: false,
-          errors: request.errorMessages,
+        url: request.url,
+        succeeded: false,
+        errors: request.errorMessages,
       })
     },
     // modify the page before loading anything
-    gotoFunction: async ({ request, page }) => {
+    gotoFunction: async ({
+      request,
+      page
+    }) => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
 
@@ -254,8 +312,10 @@ Apify.main(async () => {
         const originalQuery = window.navigator.permissions.query;
         return window.navigator.permissions.query = (parameters) => (
           parameters.name === 'notifications' ?
-            Promise.resolve({ state: Notification.permission }) :
-            originalQuery(parameters)
+          Promise.resolve({
+            state: Notification.permission
+          }) :
+          originalQuery(parameters)
         );
       });
 
@@ -285,7 +345,10 @@ Apify.main(async () => {
       // console.log('Successfully removed cookies..')
 
       // now go to the page
-      return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
+      return page.goto(request.url, {
+        waitUntil: 'networkidle2',
+        timeout: 60000
+      })
     },
     launchPuppeteerOptions: {
       useApifyProxy: true,
@@ -358,4 +421,15 @@ const sendToAPIGateway = async (data, endpoint) => {
       })
   })
   return p
+}
+
+
+const getProp = async (elementHandle, propertyName) => {
+  if (elementHandle && propertyName) {
+    const jsHandle = await elementHandle.getProperty(propertyName)
+    const propName = await jsHandle.jsonValue()
+    return propName
+  } else {
+    return ''
+  }
 }

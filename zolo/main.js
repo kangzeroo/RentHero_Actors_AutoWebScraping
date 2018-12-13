@@ -195,7 +195,6 @@ Apify.main(async () => {
         return await extractPageContents(jQuery, url)
       }, request.url)
       console.log(extracted_details)
-      // const extracted_details = await extractPageContents(page, jQuery)
       return sendToAPIGateway(extracted_details, ZOLO_PARSE_ENDPOINT)
     },
     handleFailedRequestFunction: async ({ request }) => {
