@@ -5,18 +5,20 @@ const axios = require('axios')
 const CONDOSCA_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).CONDOSCA_PARSE_ENDPOINT
 
 Apify.main(async () => {
+  // prod
   const input = await Apify.getValue('INPUT');
 
-  /*
-    input = {
-      "useApifyProxy": true,
-      "username": "junell.thebest1@gmail.com",
-      "password": "Finding1@3",
-      "minConcurrency": 1,
-      "maxConcurrency": 5,
-      "maxRequestsPerCrawl": 5
-    }
-  */
+
+  // dev
+  // const input = {
+  //   "useApifyProxy": true,
+  //   "username": "junell.thebest1@gmail.com",
+  //   "password": "Finding1@3",
+  //   "minConcurrency": 1,
+  //   "maxConcurrency": 5,
+  //   "maxRequestsPerCrawl": 5
+  // }
+
 
   // Viewport && Window size
   const width = 375
@@ -90,8 +92,8 @@ Apify.main(async () => {
   console.log('------------------')
   // dev
   // const data = [
-  //   { ad_url: 'https://condos.ca/toronto/st-lawrence-on-the-park-65-scadding-ave/unit-708-C4301810' },
-  //   { ad_url: 'https://condos.ca/toronto/the-ninety-90-broadview-ave/unit-401-E4275451' }
+  //   { ad_url: 'https://condos.ca/toronto/tango-121-mcmahon-dr/unit-1503-C4321490' },
+  //   { ad_url: 'https://condos.ca/toronto/sterling-club-2-330-mccowan-rd/unit-1014-E4321144' }
   // ]
 
   // create a list of requests

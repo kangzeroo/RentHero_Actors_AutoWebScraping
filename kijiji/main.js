@@ -5,18 +5,20 @@ const $ = require('jquery')
 const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).KIJIJI_PARSE_ENDPOINT
 
 Apify.main(async () => {
+  // prod
   const input = await Apify.getValue('INPUT');
 
-  /*
-    input = {
-      "useApifyProxy": true,
-      "username": "junell.thebest1@gmail.com",
-      "password": "Finding1@3",
-      "minConcurrency": 1,
-      "maxConcurrency": 5,
-      "maxRequestsPerCrawl": 5
-    }
-  */
+
+    // dev
+    // const input = {
+    //   "useApifyProxy": true,
+    //   "username": "junell.thebest1@gmail.com",
+    //   "password": "Finding1@3",
+    //   "minConcurrency": 1,
+    //   "maxConcurrency": 5,
+    //   "maxRequestsPerCrawl": 5
+    // }
+
 
   // first we grab the login cookie
   // console.log('Launching Initial Puppeteer...')
@@ -64,10 +66,8 @@ Apify.main(async () => {
   console.log('------------------')
   // dev
   // const data = [
-  //   // { ad_url: 'https://kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/stunning-loft-in-king-west-2-bed-2-bath-parking/1396501964?enableSearchNavigationFlag=true' },
-  //   { ad_url: 'https://www.kijiji.ca/v-2-bedroom-apartments-condos/city-of-toronto/trying-to-rent-a-condo-or-house-have-bad-credit-we-can-help/1368682941?enableSearchNavigationFlag=true' },
-  //   { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/318-richmond-st-806/1397141511?enableSearchNavigationFlag=true' },
-  //   { ad_url: 'https://www.kijiji.ca/v-1-bedroom-apartments-condos/city-of-toronto/1-bedroom-basement/1397142407?enableSearchNavigationFlag=true' }
+  //   { ad_url: 'https://www.kijiji.ca/v-apartments-condos/mississauga-peel-region/2-bedroom-condo-for-rent-in-mississauga-near-square-one/1394383312?enableSearchNavigationFlag=true' },
+  //   { ad_url: 'https://www.kijiji.ca/v-house-rental/city-of-toronto/brand-new-deluxe-townhouse-queen-west-area/1401946336?enableSearchNavigationFlag=true' },
   // ]
 
   // create a list of requests
@@ -120,7 +120,7 @@ Apify.main(async () => {
     },
     minConcurrency: input.minConcurrency || 1,
     maxConcurrency: input.maxConcurrency || 1,
-    maxRequestsPerCrawl: input.maxRequestsPerCrawl || 100,
+    maxRequestsPerCrawl: input.maxRequestsPerCrawl || 300,
   })
   await crawler.run()
 })

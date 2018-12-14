@@ -7,18 +7,20 @@ const jsesc = require('jsesc')
 const ZOLO_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).ZOLO_PARSE_ENDPOINT
 
 Apify.main(async () => {
+  // prod
   const input = await Apify.getValue('INPUT');
 
-  /*
-    input = {
-      "useApifyProxy": true,
-      "username": "junell.thebest1@gmail.com",
-      "password": "Finding1@3",
-      "minConcurrency": 1,
-      "maxConcurrency": 5,
-      "maxRequestsPerCrawl": 5
-    }
-  */
+
+  // dev
+  // const input = {
+  //   "useApifyProxy": true,
+  //   "username": "junell.thebest1@gmail.com",
+  //   "password": "Finding1@3",
+  //   "minConcurrency": 1,
+  //   "maxConcurrency": 5,
+  //   "maxRequestsPerCrawl": 5
+  // }
+
 
   // Viewport && Window size
   const width = 1920
@@ -195,7 +197,6 @@ Apify.main(async () => {
         return await extractPageContents(jQuery, url)
       }, request.url)
       console.log(extracted_details)
-      // const extracted_details = await extractPageContents(page, jQuery)
       return sendToAPIGateway(extracted_details, ZOLO_PARSE_ENDPOINT)
     },
     handleFailedRequestFunction: async ({ request }) => {

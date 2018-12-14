@@ -4,7 +4,7 @@ const UserAgent = require('user-agents')
 const userAgent = new UserAgent();
 // const $ = require('jquery')
 
-// const ZUMPER_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).ZUMPER_PARSE_ENDPOINT
+const ZUMPER_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).ZUMPER_PARSE_ENDPOINT
 
 Apify.main(async () => {
   const input = await Apify.getValue('INPUT');
@@ -32,74 +32,136 @@ Apify.main(async () => {
   // });
 
 
-  // first we grab the login cookie
-  // console.log('Launching Initial Puppeteer...')
-  // const browser = await Apify.launchPuppeteer({
-  //   useApifyProxy: true,
-  //   apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
-  //   liveView: false,
-  //   useChrome: true,
-  //   args: [
-  //       `--window-size=${ width },${ height }`
-  //   ],
-  // });
-  //
-  // const page = await browser.newPage();
-  //
-  // await page.viewport({ width, height })
-  // await page.goto('https://www.zolo.ca/toronto-real-estate');
-  // // Login
-  // console.log('Logging In to Zolo...')
-  // await page.waitForSelector("button.drawer-menu-toggle")
-  // await page.click('button.drawer-menu-toggle')
-  // await Apify.utils.sleep(1000);
-  // await page.waitForSelector("button.signup-btn")
-  // await page.click('button.signup-btn')
-  // await Apify.utils.sleep(1000);
-  // await page.waitForSelector("input[name='emailaddress']")
-  // await page.waitForSelector("button#submitEmail")
-  // await page.type("input[name='emailaddress']", input.email || 'huang.khan74@gmail.com')
-  // await Apify.utils.sleep(1000);
-  // await page.click('button#submitEmail')
-  // await Apify.utils.sleep(5000);
-  // // // Get cookies
-  // const cookies = await page.cookies()
-  // console.log(` ------ login cookies grabbed --------`)
-  // console.log(cookies)
+  const crawlAdList = async () => {
+        // first we grab the list of recent listings
+        console.log('Launching Initial Puppeteer...')
+        const browser = await Apify.launchPuppeteer({
+          useApifyProxy: true,
+          apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
+          liveView: false,
+          useChrome: true,
+          args: [
+            // `--window-size=${ width },${ height }`
+          ],
+        });
 
-  // then we crawl over the array
-  // prod
-  // const response = await Apify.client.crawlers.getExecutionResults({
-  //     executionId: input._id
-  // })
-  // console.log('------------------')
-  // console.log(response.items.length)
-  // console.log('------------------')
-  // // console.log(response.items[0])
-  // const data = []
-  // response.items.forEach((item) => {
-  //   if (item.pageFunctionResult) {
-  //     item.pageFunctionResult.forEach((r) => {
-  //       data.push(r)
-  //     })
-  //   }
-  // })
-  // console.log('------------------')
-  // console.log(data)
-  // console.log(`Found ${data.length} entries`)
-  // console.log('------------------')
-  // console.log(process.env.NODE_ENV)
-  // console.log('------------------')
+        const page = await browser.newPage();
 
-  // dev
-  const data = [
-    { ad_url: 'https://www.zumper.com/apartment-buildings/p213214/221-265-balliol-street-davisville-village-toronto-on' },
-    // { ad_url: 'https://www.realtor.ca/real-estate/19891858/4-1-bedroom-single-family-house-5138-lakeshore-rd-w-burlington-appleby?' },
-    // { ad_url: 'https://www.apartments.com/517-n-3rd-st-toronto-oh/brvnmkb/' },
-    // { ad_url: 'https://www.zoocasa.com/toronto-on-real-estate/5799107-th117-500-richmond-st-w-toronto-on-m5v1y2-c4321563' },
-    // { ad_url: 'https://www.torontorentals.com/toronto/kings-club-id60237' },
-  ]
+        await Apify.utils.puppeteer.hideWebDriver(page);
 
+        // Pass the Permissions Test.
+        await page.evaluateOnNewDocument(() => {
+          const originalQuery = window.navigator.permissions.query;
+          return window.navigator.permissions.query = (parameters) => (
+            parameters.name === 'notifications' ?
+            Promise.resolve({
+              state: Notification.permission
+            }) :
+            originalQuery(parameters)
+          );
+        });
+
+        // Pass the Plugins Length Test.
+        await page.evaluateOnNewDocument(() => {
+          // Overwrite the `plugins` property to use a custom getter.
+          Object.defineProperty(navigator, 'plugins', {
+            // This just needs to have `length > 0` for the current test,
+            // but we could mock the plugins too if necessary.
+            get: () => [1, 2, 3, 4, 5],
+          });
+        });
+
+        // Pass the Languages Test.
+        await page.evaluateOnNewDocument(() => {
+          // Overwrite the `plugins` property to use a custom getter.
+          Object.defineProperty(navigator, 'languages', {
+            get: () => ['en-US', 'en'],
+          });
+        });
+
+        // await page.addScriptTag({ url: 'https://code.jquery.com/jquery-3.2.1.min.js' })
+
+        const listingsPage = 'https://www.zumper.com/apartments-for-rent/toronto-on?sort=newest&property-categories=apartment,condo,house&page=1'
+
+        await page.goto(listingsPage, {
+          waitUntil: 'networkidle2',
+          timeout: 60000
+        })
+
+        await Apify.utils.puppeteer.injectJQuery(page)
+        // using sexy convinient jquery
+        page.on('console', msg => {
+          for (let i = 0; i < msg.args().length; ++i)
+            console.log(`${i}: ${msg.args()[i]}`);
+        });
+        let the_limit = 5
+        await page.evaluate(async (the_limit) => {
+          let limit = the_limit
+          await $('button:contains("Load more listings")').animate({
+              scrollTop: $('button:contains("Load more listings")').offset().top
+          }, 500)
+          for (let x = 0; x < limit; x++) {
+            setTimeout(async () => {
+              await window.$('button:contains("Load more listings")').click();
+            }, 1000 * x)
+          }
+          await new Promise((res, rej) => setTimeout(res, limit*1200))
+        }, the_limit);
+        await new Promise((res, rej) => setTimeout(res, the_limit*1500+1000))
+
+        // using the bulk apify way
+        const ldjsonPromises = await page.$$('script[type="application/ld+json"]')
+        const lsjsons = ldjsonPromises.map(async json => await getProp(json, 'textContent'))
+        const allThem = await Promise.all(lsjsons)
+        console.log(allThem.length)
+        page.close()
+        return allThem
+  }
+  const raw_data = await crawlAdList()
+  /*
+      allThem[0] = {
+        "@context":"http://schema.org",
+        "@type":"ApartmentComplex",
+        "address":{
+          "@context":"http://schema.org",
+          "@type":"PostalAddress",
+          "addressLocality":"Toronto",
+          "addressRegion":"ON",
+          "name":"Alter",
+          "postalCode":"M5B 1H3",
+          "streetAddress":"89 McGill St"
+        },
+        "name":"Apartments for Rent at Alter",
+        "geo":{
+          "@type":"GeoCoordinates",
+          "latitude":43.6606054,
+          "longitude":-79.3786354
+        },
+        "url":"https://www.zumper.com/apartment-buildings/p331953/alter-garden-district-toronto-on",
+        "photo":"https://d37lj287rvypnj.cloudfront.net/240045937/medium",
+        "containedInPlace":{
+          "@context":"http://schema.org",
+          "@type":"City",
+          "address":{
+            "@context":"http://schema.org",
+            "@type":"PostalAddress",
+            "addressLocality":"Toronto",
+            "addressRegion":"ON"
+          },
+          "name":"Toronto",
+          "url":"https://www.zumper.com/apartments-for-rent/toronto-on"
+        }
+      }
+  */
+
+  await Apify.utils.sleep(1000);
+
+  const data = raw_data.map(ad => {
+    // console.log(ad)
+    return {
+      ad_url: JSON.parse(ad).url
+    }
+  }).filter(ad => ad.ad_url)
   // create a list of requests
   const dtt = data.map((d) => {
     return {
@@ -107,18 +169,25 @@ Apify.main(async () => {
     }
   })
   console.log(dtt)
+  console.log(dtt.length)
   const requestList = new Apify.RequestList({
     sources: dtt,
     persistStateKey: 'zumper-ad-scraping-state'
   })
+  // console.log(requestList)
+  // console.log('---------------------')
   // This call loads and parses the URLs from the remote file.
   await requestList.initialize()
+  // console.log(requestList)
 
   const crawler = new Apify.PuppeteerCrawler({
     requestList,
     // NOTE: jQuery must be injected in order to use text locators. If jQuery is used, it cannot work alongside page.$()
     // and we must wrap it all inside page.evaluate()
-    handlePageFunction: async ({page, request}) => {
+    handlePageFunction: async ({
+      page,
+      request
+    }) => {
       // await page.reload()
       console.log(` ------ Page Loaded --------`)
       // console.log(await page.cookies())
@@ -126,6 +195,9 @@ Apify.main(async () => {
       console.log(`Title of ${request.url}: ${title}`)
       // inject jQuery into page
       const x = await Apify.utils.puppeteer.injectJQuery(page)
+
+      await page.waitForSelector('[aria-label]')
+
       page.on('console', msg => {
         for (let i = 0; i < msg.args().length; ++i)
           console.log(`${i}: ${msg.args()[i]}`);
@@ -133,37 +205,89 @@ Apify.main(async () => {
 
       const extracted_details = await page.evaluate(async (url) => {
 
-        // const extractImages = async ($) => {
-        //   let imgs = []
-        //   await $("img.listing-slider-content-photo-main").each((i, img) => {
-        //      imgs.push(img.dataset.imgDeferSrc)
-        //   })
-        //   return imgs
-        // }
-
         const extractPageContents = async ($, url) => {
+          await new Promise((res, rej) => setTimeout(res, 3000))
+
+          // grabs the zumper description
+          // note that .siblings() will give you everything, but only 1 of the divs are the description
+          const aboutTitle = $("h2:contains('About')")[0].className
+          console.log(aboutTitle)
+          const siblings = $(`.${aboutTitle}`).parent().siblings()
+          console.log(`------- siblings`)
+          console.log(siblings)
+          console.log(siblings.length)
+          console.log(siblings[1])
+
+          let descs = []
+          await siblings.each(async (i) => {
+            console.log(`siblings[${i}]`)
+            const desc = siblings[i].innerText.replace(/[\t\n\r]/gm,' ').trim()
+            console.log(desc)
+            await descs.push(desc)
+          })
+          console.log('------- descs')
+          console.log(descs)
+
+          console.log("---------- SCHEMA.ORG -----------")
+          const schemaElement = await $('script[type="application/ld+json"]')
+          console.log(schemaElement[0])
+          let schema = null
+          if (schemaElement[0] && schemaElement[0].innerText) {
+            const sch = JSON.parse(schemaElement[0].innerText)
+            console.log(sch)
+            schema = sch
+          }
+
+          console.log('------ PRICE ------')
+          await new Promise((res, rej) => setTimeout(res, 2000))
+          let price = 0
+          const priceElement = document.evaluate('//*[@id="root"]/div/div/div[2]/div/div[2]/div[2]/div/div[3]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue
+          if (priceElement) {
+            price = priceElement.innerText
+          }
+          console.log(price)
+
+          console.log('------ CONTACT -------')
+          const contactTitle = jQuery("h2:contains('Contact')")[0].className
+          console.log(contactTitle)
+          const contactSiblings = $(`.${contactTitle}`).siblings()
+          let contactInfo = ''
+          if (contactSiblings && contactSiblings[0] && contactSiblings[0].childNodes && contactSiblings[0].childNodes[1] && contactSiblings[0].childNodes[1].childNodes && contactSiblings[0].childNodes[1].childNodes[0] && contactSiblings[0].childNodes[1].childNodes[0].innerText) {
+            contactInfo = contactSiblings[0].childNodes[1].childNodes[0].innerText
+          }
+          console.log(contactInfo)
 
           // opens zumper images
           // https://www.zumper.com/apartment-buildings/p213214/221-265-balliol-street-davisville-village-toronto-on
-          // $('[aria-label]').click()
+          await $('[aria-label]').click()
+          await new Promise((res, rej) => setTimeout(res, 1000))
           // after click, you can grab all the images as thumbnails
-          // const results = $('span[aria-label*="Go to Slide"] > div > img')
-          // results.each((i) => {
-          // 	console.log(results[i].src) // returns https://d37lj287rvypnj.cloudfront.net/172167044/small
-          // })
+          const results = await $('span[aria-label*="Go to Slide"] > div > img')
+          console.log(results)
+          let thumbnails = []
+          await results.each(async (i) => {
+            // console.log(results[i])
+          	if (results[i] && results[i].src) { // returns https://d37lj287rvypnj.cloudfront.net/172167044/small
+              // console.log(`results[${i}]`)
+              // console.log(results[i])
+              // console.log(`src`)
+              // console.log(results[i].src)
+              await thumbnails.push(results[i].src)
+            } else {
+              // console.log('------ im cheesed')
+              await true
+            }
+          })
           // to get the full image version, replace https://.../small with https://.../1280x960
-
-          // grabs the zumper description
-          // const aboutTitle = $("h2:contains('About')")[0].className
-          // $(aboutTitle).parent().siblings().text()
-          // note that .siblings() will give you everything, but only 1 of the divs are the description
-
-          // similarly we can use the $(aboutTitle).parent().siblings().text() to get beds & amenities
-          // 
+          const images = thumbnails.map(thumb => {
+            return thumb.slice(0, thumb.length - '/small'.length) + '/1280x960'
+          })
+          console.log('------- images')
+          console.log(images)
 
           /*
             // grabs the ls+json schemas and opens them up
-            var jsonLD = $$('script[type="application/ld+json"]');
+            var jsonLD = $('script[type="application/ld+json"]');
             jsonLD[30].innerText = {
               "@context": "http://schema.org",
               "@type": "Apartment",
@@ -197,52 +321,46 @@ Apify.main(async () => {
                 "url": "https://www.zumper.com/apartments-for-rent/toronto-on"
               }
             }
-            $('script[type="application/ld+json"]').each( function(i) {
-              if (i && i.innerText) {
-                const schema = JSON.parse(i.innerText)
-                if (schema && schema['@type'] && schema['@type'] !== 'City') {
-                  console.log("---------- FEED ITEM -----------")
-                  console.log(schema)
-                  var scraped_obj = {
-                      ad_url : schema.url,
-                  }
-                  results.push(scraped_obj);
-                }
-              }
-            });
           */
 
-          // const address_1 = await $("h1.address").text()
-          // const address_2 = await $("section.listing-location > div > a:first-of-type").text()
-          // const price = await $("section.listing-price > div:first-of-type > span.priv").text().replace('\n', '')
-          // const description = await $("div.section-listing-content > div.section-listing-content-pad > span.priv > p:nth-of-type(2)").text()
-          // const image_urls = await extractImages($)
-          // const section_rooms = await $("section.section-listing input#acc-listing-rooms ~ *").text().replace(/[\t\n\r]/gm,' ').trim()
-          await new Promise((res, rej) => setTimeout(res, 20000))
+          await new Promise((res, rej) => setTimeout(res, 1000))
 
-          const extraction = {
-            // ad_id: await getProp(ad_id, 'textContent'),
-            ad_url: url,
+          if (schema) {
+            const extraction = {
+              // ad_id: await getProp(ad_id, 'textContent'),
+              ad_url: url,
+              images: images,
+              address: `${schema.address.streetAddress}, ${schema.address.addressLocality} ${schema.address.addressRegion}`,
+              price: price,
+              contact: contactInfo,
+              descs: descs,
+            }
+            console.log('------- extraction')
+            console.log(extraction)
+            return extraction
+          } else {
+            return null
           }
-          console.log(extraction)
-          return extraction
         }
         return await extractPageContents(jQuery, url)
       }, request.url)
       console.log(extracted_details)
-      return Promise.resolve(extracted_details)
-      // const extracted_details = await extractPageContents(page, jQuery)
-      // return sendToAPIGateway(extracted_details, ZUMPER_PARSE_ENDPOINT)
+      return sendToAPIGateway(extracted_details, ZUMPER_PARSE_ENDPOINT)
     },
-    handleFailedRequestFunction: async ({ request }) => {
+    handleFailedRequestFunction: async ({
+      request
+    }) => {
       await Apify.pushData({
-          url: request.url,
-          succeeded: false,
-          errors: request.errorMessages,
+        url: request.url,
+        succeeded: false,
+        errors: request.errorMessages,
       })
     },
     // modify the page before loading anything
-    gotoFunction: async ({ request, page }) => {
+    gotoFunction: async ({
+      request,
+      page
+    }) => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
 
@@ -254,8 +372,10 @@ Apify.main(async () => {
         const originalQuery = window.navigator.permissions.query;
         return window.navigator.permissions.query = (parameters) => (
           parameters.name === 'notifications' ?
-            Promise.resolve({ state: Notification.permission }) :
-            originalQuery(parameters)
+          Promise.resolve({
+            state: Notification.permission
+          }) :
+          originalQuery(parameters)
         );
       });
 
@@ -285,7 +405,10 @@ Apify.main(async () => {
       // console.log('Successfully removed cookies..')
 
       // now go to the page
-      return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
+      return page.goto(request.url, {
+        waitUntil: 'networkidle2',
+        timeout: 60000
+      })
     },
     launchPuppeteerOptions: {
       useApifyProxy: true,
@@ -294,9 +417,9 @@ Apify.main(async () => {
       // liveView: false,
       // useChrome: false,
     },
-    minConcurrency: input.minConcurrency || 1,
-    maxConcurrency: input.maxConcurrency || 1,
-    maxRequestsPerCrawl: input.maxRequestsPerCrawl || 100,
+    minConcurrency: input && input.minConcurrency ? input.minConcurrency : 1,
+    maxConcurrency: input && input.maxConcurrency ? input.maxConcurrency : 1,
+    maxRequestsPerCrawl: input && input.maxRequestsPerCrawl ? input.maxRequestsPerCrawl : 200,
   })
   await crawler.run()
 })
@@ -358,4 +481,15 @@ const sendToAPIGateway = async (data, endpoint) => {
       })
   })
   return p
+}
+
+
+const getProp = async (elementHandle, propertyName) => {
+  if (elementHandle && propertyName) {
+    const jsHandle = await elementHandle.getProperty(propertyName)
+    const propName = await jsHandle.jsonValue()
+    return propName
+  } else {
+    return ''
+  }
 }
