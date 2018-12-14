@@ -4,10 +4,10 @@
 	"description": "This is a boilerplate of an Apify actor.",
 	"main": "main.js",
 	"dependencies": {
-		"apify": "^0.8.0",
-		"axios": "^0.18.0",
-		"cssesc": "^2.0.0",
-		"jsesc": "^2.5.2"
+		"apify": "0.8.0",
+		"axios": "0.18.0",
+		"cssesc": "2.0.0",
+		"jsesc": "2.5.2"
 	},
 	"devDependencies": {},
 	"scripts": {

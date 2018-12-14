@@ -1,12 +1,12 @@
 {
-	"name": "zumper",
-	"actId": null,
+	"name": "zumper-crawler-extractor",
+	"actId": "P2ex64EKEajmWoHzK",
 	"version": {
 		"versionNumber": "0.1",
 		"buildTag": "latest",
 		"envVars": [],
 		"sourceType": "TARBALL",
-		"tarballUrl": null
+		"tarballUrl": "https://api.apify.com/v2/key-value-stores/4PAP6kEvWmkD9KYmL/records/zumper-crawler-extractor-0.1.zip?disableRedirect=true"
 	},
 	"template": "hello_word"
 }
