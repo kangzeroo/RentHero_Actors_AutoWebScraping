@@ -105,7 +105,7 @@ Apify.main(async () => {
   console.log(dtt)
   const requestList = new Apify.RequestList({
     sources: dtt,
-    persistStateKey: 'zolo-ad-scraping-state'
+    persistStateKey: 'condos-ad-scraping-state'
   })
   // This call loads and parses the URLs from the remote file.
   await requestList.initialize()
