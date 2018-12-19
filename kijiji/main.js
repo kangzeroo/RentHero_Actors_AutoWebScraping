@@ -5,6 +5,17 @@ const $ = require('jquery')
 const KIJIJI_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_URLS`).KIJIJI_PARSE_ENDPOINT
 
 Apify.main(async () => {
+
+  const loginAccounts = [
+    { username: 'junell.thebest1@gmail.com', password: 'Finding1@3' },
+    { username: 'paterno.thefast2@gmail.com', password: 'Searching!23' },
+    { username: 'dexter.theflex3@gmail.com', password: 'alnsd@dsf8' },
+    { username: 'yurisovachinko@yandex.com', password: 'Convention@99' },
+    { username: 'rhona.abbott@yandex.com', password: 'Convention@99' },
+    { username: 'Leroy Whitney', password: 'leroy.whitney@yandex.com' },
+    { username: 'Naima Gentry', password: 'naima.gentry@yandex.com' },
+  ]
+
   // prod
   const input = await Apify.getValue('INPUT');
 
@@ -21,25 +32,26 @@ Apify.main(async () => {
 
 
   // first we grab the login cookie
-  // console.log('Launching Initial Puppeteer...')
-  // const browser = await Apify.launchPuppeteer({
-    // useApifyProxy: true,
-    // apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
-    // liveView: false,
-    // useChrome: false,
-  // });
-  // const page = await browser.newPage();
-  // await page.goto('https://www.kijiji.ca/t-login.html');
+  console.log('Launching Initial Puppeteer...')
+  const browser = await Apify.launchPuppeteer({
+    useApifyProxy: true,
+    apifyProxyGroups: ['SHADER', 'BUYPROXIES63748', 'BUYPROXIES63811', 'BUYPROXIES94952'],
+    liveView: false,
+    useChrome: false,
+  });
+  const page = await browser.newPage();
+  await page.goto('https://www.kijiji.ca/t-login.html');
   // Login
-  // console.log('Logging In to Kijiji...')
-  // await page.type('#LoginEmailOrNickname', input.username || 'junell.thebest1@gmail.com')
-  // await page.type('#login-password', input.password || 'Finding1@3')
-  // await page.click('button#SignInButton')
-  // await new Promise((res, rej) => setTimeout(res, 3000))
-  // // Get cookies
-  // const cookies = await page.cookies()
-  // console.log(` ------ login cookies grabbed --------`)
-  // console.log(cookies)
+  console.log('Logging In to Kijiji...')
+  const randomAccount = loginAccounts[Math.floor(Math.random() * loginAccounts.length)]
+  await page.type('#LoginEmailOrNickname', input.username || randomAccount.username)
+  await page.type('#login-password', input.password || randomAccount.password)
+  await page.click('button#SignInButton')
+  await new Promise((res, rej) => setTimeout(res, 3000))
+  // Get cookies
+  const cookies = await page.cookies()
+  console.log(` ------ login cookies grabbed --------`)
+  console.log(cookies)
 
   // then we crawl over the array
   // prod
@@ -105,11 +117,11 @@ Apify.main(async () => {
     gotoFunction: async ({ request, page }) => {
       console.log('Starting the web scraping job for next page...')
       console.log(request.url)
-      const cookies = await page.cookies()
-      // await page.setCookie(...cookies)
-      // console.log('Successfully set cookies..')
-      await page.deleteCookie(...cookies);
-      console.log('Successfully removed cookies..')
+      // const cookies = await page.cookies()
+      await page.setCookie(...cookies)
+      console.log('Successfully set cookies..')
+      // await page.deleteCookie(...cookies);
+      // console.log('Successfully removed cookies..')
       return page.goto(request.url, { waitUntil: 'networkidle2', timeout: 60000 })
     },
     launchPuppeteerOptions: {

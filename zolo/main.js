@@ -8,18 +8,18 @@ const ZOLO_PARSE_ENDPOINT = require(`./credentials/${process.env.NODE_ENV}/API_U
 
 Apify.main(async () => {
   // prod
-  const input = await Apify.getValue('INPUT');
+  // const input = await Apify.getValue('INPUT');
 
 
   // dev
-  // const input = {
-  //   "useApifyProxy": true,
-  //   "username": "junell.thebest1@gmail.com",
-  //   "password": "Finding1@3",
-  //   "minConcurrency": 1,
-  //   "maxConcurrency": 5,
-  //   "maxRequestsPerCrawl": 5
-  // }
+  const input = {
+    "useApifyProxy": true,
+    "username": "junell.thebest1@gmail.com",
+    "password": "Finding1@3",
+    "minConcurrency": 1,
+    "maxConcurrency": 5,
+    "maxRequestsPerCrawl": 5
+  }
 
 
   // Viewport && Window size
@@ -71,32 +71,32 @@ Apify.main(async () => {
 
   // then we crawl over the array
   // prod
-  const response = await Apify.client.crawlers.getExecutionResults({
-      executionId: input._id
-  })
-  console.log('------------------')
-  console.log(response.items.length)
-  console.log('------------------')
-  // console.log(response.items[0])
-  const data = []
-  response.items.forEach((item) => {
-    if (item.pageFunctionResult) {
-      item.pageFunctionResult.forEach((r) => {
-        data.push(r)
-      })
-    }
-  })
-  console.log('------------------')
-  console.log(data)
-  console.log(`Found ${data.length} entries`)
-  console.log('------------------')
-  console.log(process.env.NODE_ENV)
-  console.log('------------------')
+  // const response = await Apify.client.crawlers.getExecutionResults({
+  //     executionId: input._id
+  // })
+  // console.log('------------------')
+  // console.log(response.items.length)
+  // console.log('------------------')
+  // // console.log(response.items[0])
+  // const data = []
+  // response.items.forEach((item) => {
+  //   if (item.pageFunctionResult) {
+  //     item.pageFunctionResult.forEach((r) => {
+  //       data.push(r)
+  //     })
+  //   }
+  // })
+  // console.log('------------------')
+  // console.log(data)
+  // console.log(`Found ${data.length} entries`)
+  // console.log('------------------')
+  // console.log(process.env.NODE_ENV)
+  // console.log('------------------')
   // dev
-  // const data = [
-  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/31-bales-avenue/911' },
-  //   { ad_url: 'https://www.zolo.ca/toronto-real-estate/121-alfred-avenue' }
-  // ]
+  const data = [
+    { ad_url: 'https://www.zolo.ca/toronto-real-estate/628-fleet-street/2803' },
+    { ad_url: 'https://www.zolo.ca/toronto-real-estate/628-fleet-street/2803' }
+  ]
 
   // create a list of requests
   const dtt = data.map((d) => {
