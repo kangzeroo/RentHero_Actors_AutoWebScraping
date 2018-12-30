@@ -12,8 +12,8 @@ Apify.main(async () => {
     { username: 'dexter.theflex3@gmail.com', password: 'alnsd@dsf8' },
     { username: 'yurisovachinko@yandex.com', password: 'Convention@99' },
     { username: 'rhona.abbott@yandex.com', password: 'Convention@99' },
-    { username: 'Leroy Whitney', password: 'leroy.whitney@yandex.com' },
-    { username: 'Naima Gentry', password: 'naima.gentry@yandex.com' },
+    { username: 'leroy.whitney@yandex.com', password: 'Convention@99' },
+    { username: 'naima.gentry@yandex.com', password: 'Convention@99' },
   ]
 
   // prod
